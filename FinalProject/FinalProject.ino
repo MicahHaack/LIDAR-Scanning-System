@@ -91,18 +91,6 @@ void loop() {
     
 
 
-  if( runScan && !inStr.compareTo("stop\r")) {   // check if user wants to stop scan
-    Serial.println("Stopping scan...");
-    horiz_start_angle = -1;
-    horiz_stop_angle = -1;
-    vert_start_angle = -1;
-    vert_stop_angle = -1;
-    num_points = 0;
-    
-    runScan = false;
-  }
-
-
   if( runScan ) {   // if we are running a scan complete next scan cycle
   // interupt instead to allow for loops ?
     delay(1000);
@@ -333,6 +321,30 @@ void obtainPixelParams() {
   String printStr = "Starting pixel scan at (" + String(horiz_start_angle) + ", " + String(vert_start_angle) + ")";
   Serial.println(printStr);
  
+}
+
+bool checkForStop() {
+  grabInputNoWait();
+
+  if( !inStr.compareTo("stop\r") ) {
+    runScan == false;
+    runStop();
+    return true;
+  }
+
+  return false;
+  
+}
+
+void runStop() {
+    Serial.println("Stopping scan...");
+    horiz_start_angle = -1;
+    horiz_stop_angle = -1;
+    vert_start_angle = -1;
+    vert_stop_angle = -1;
+    num_points = 0;
+    
+    runScan = false;
 }
 
 void establishContact() {
