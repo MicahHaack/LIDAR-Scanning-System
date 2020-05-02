@@ -7,6 +7,8 @@
 
 
 #include <ctype.h>
+#include <LIDARLite.h>
+#include <Servo.h>
 
 #define MAX_POINT_COUNT 100
 
@@ -23,11 +25,22 @@ int vert_start_angle = -1;  // adjust by some constant
 int vert_stop_angle = -1;
 int num_points = 0;
 
+LIDARLite lidarLite;
+Servo horizontal, vertical;
+
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(9600); // Initialize serial connection
+
+  lidarLite.begin(0, true); // Set configuration to default and I2C to 400 kHz
+  lidarLite.configure(0); // Change this number to try out alternate configurations
+
+  horizontal.attach(PC6);
+  vertical.attach(D8);
+  horizontal.write(90);
+  vertical.write(90);
 
 
-  Serial.begin(9600);     // startup serial coms
   while( !Serial ) { ; }  // wait for serial to connect
   Serial.println("Enter anything to validate connection:");
 
@@ -97,14 +110,73 @@ void loop() {
 
     if( mode == PIXEL ) {
       Serial.println("stepping pixel op");
+      TakePoint(horiz_start_angle, vert_start_angle);
+      runStop();
     } else if( mode == LINE ) {
       Serial.println("stepping line op");
+      if(line == HORIZ) {
+        TakeLine(horiz_start_angle, horiz_stop_angle, num_points, vert_start_angle, true);
+      }
+      else {
+        TakeLine(vert_start_angle, vert_stop_angle, num_points, horiz_start_angle, false);
+      }
+      runStop();
     } else if( mode == CLOUD ) {
       Serial.println("stepping cloud op");
-    }
-    
+      TakePointCloud(horiz_start_angle, horiz_stop_angle, vert_start_angle, vert_stop_angle, num_points, num_points);
+      runStop();
+    } 
   }
+}
 
+void TakePoint(double x, double y) {
+  if( checkForStop() )
+    return;
+  horizontal.write(x);
+  vertical.write(y);
+  
+  delay(1000);
+  
+  Serial.print("At (");
+  Serial.print(horizontal.read());
+  Serial.print(", ");
+  Serial.print(vertical.read());
+  Serial.print("), the distance is ");
+  int dist = lidarLite.distance();
+  Serial.print(dist);
+  Serial.println(" cm");
+  delay(10);
+}
+
+void TakeLine(double minNum, double maxNum, double numPoints, double otherAxis, bool isHorizontal) {
+  if( checkForStop())
+    return;
+  double res = (maxNum-minNum) / numPoints;
+  if(isHorizontal) {
+    double y = otherAxis;
+    for(double x = minNum; x < maxNum; x+=res) {
+      if( checkForStop() )
+        return;
+      TakePoint(x,y);
+    }
+  }
+  else {
+    double x = otherAxis;
+    for(double y = minNum; y < maxNum; y+=res) {
+      TakePoint(x,y);
+      if( checkForStop() )
+        return;
+    }
+  }
+}
+
+void TakePointCloud(int minX, int maxX, int minY, int maxY, int xPoints, int yPoints) {
+  double yRes = (maxY-minY)/yPoints;
+  for(double y = minY; y < maxY; y+=yRes) {
+    TakeLine(minX, maxX, xPoints, y, true);
+    if( checkForStop() )
+      return;
+  }
 }
 
 /* helper function to check if the user input is a valid angle */
@@ -324,6 +396,9 @@ void obtainPixelParams() {
 }
 
 bool checkForStop() {
+  if(!runScan)
+    return true;
+    
   grabInputNoWait();
 
   if( !inStr.compareTo("stop\r") ) {
