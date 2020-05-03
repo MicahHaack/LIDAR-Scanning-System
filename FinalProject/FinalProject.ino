@@ -8,6 +8,7 @@
 
 #include <ctype.h>
 #include <LIDARLite.h>
+#include <Wire.h>
 #include <Servo.h>
 
 #define MAX_POINT_COUNT 100
@@ -124,7 +125,9 @@ void TakePoint(double x, double y) {
   Serial.print("), the distance is ");
   int dist = lidarLite.distance();
   Serial.print(dist);
-  Serial.println(" cm");
+  Serial.print(" cm. Intensity: ");
+  int inTentCity = intensity();
+  Serial.println(inTentCity);
   delay(10);
 }
 
@@ -409,4 +412,41 @@ void establishContact() {
   }
   Serial.println("");
   Serial.println("CONNECTED");   // carriage return
+}
+
+int intensity()
+{
+byte isBusy = 1;
+int intensity;
+int loopCount;
+
+// Poll busy bit in status register until device is idle
+while(isBusy)
+{
+// Read status register
+Wire.beginTransmission(LIDARLITE_ADDR_DEFAULT);
+Wire.write(0x01);
+Wire.endTransmission();
+Wire.requestFrom(LIDARLITE_ADDR_DEFAULT, 1);
+isBusy = Wire.read();
+isBusy = bitRead(isBusy,0); // Take LSB of status register, busy bit
+
+loopCount++; // Increment loop counter
+// Stop status register polling if stuck in loop
+if(loopCount > 9999)
+{
+  break;
+}
+}
+
+// read register 0x0e which is signal strength
+Wire.beginTransmission(LIDARLITE_ADDR_DEFAULT);
+Wire.write(0x0e);
+Wire.endTransmission();
+Wire.requestFrom(LIDARLITE_ADDR_DEFAULT, 1);
+intensity = Wire.read();
+
+// Return the measured intensity
+
+return intensity;
 }
