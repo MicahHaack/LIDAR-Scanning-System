@@ -126,7 +126,7 @@ void TakePoint(double x, double y) {
   int dist = lidarLite.distance();
   Serial.print(dist);
   Serial.print(" cm. Intensity: ");
-  int inTentCity = intensity();
+  uint8_t inTentCity = intensity();
   Serial.println(inTentCity);
   delay(10);
 }
@@ -414,10 +414,10 @@ void establishContact() {
   Serial.println("CONNECTED");   // carriage return
 }
 
-int intensity()
+uint8_t intensity()
 {
 byte isBusy = 1;
-int intensity;
+uint8_t intensity;
 int loopCount;
 
 // Poll busy bit in status register until device is idle
