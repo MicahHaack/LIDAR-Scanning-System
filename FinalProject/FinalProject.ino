@@ -25,6 +25,7 @@ int horiz_stop_angle = -1;
 int vert_start_angle = -1;  // adjust by some constant
 int vert_stop_angle = -1;
 int num_points = 0;
+int status_LED = PA5;
 
 LIDARLite lidarLite;
 Servo horizontal, vertical;
@@ -51,6 +52,7 @@ void setup() {
   Serial.println("Enter stop at any time to abort the scan process");
   
   grabInput();
+  pinMode(status_LED, OUTPUT);
 
 }
 
@@ -77,12 +79,16 @@ void loop() {
     //Single point mode
     if( mode_pick == 1 ) {
       obtainPixelParams();      
+      Serial.println("Estimated scan time: 1.06 seconds");
       TakePoint(horiz_start_angle, vert_start_angle);
     }
     
     //Line mode
     else if( mode_pick == 2 ) {
       obtainLineParams();
+      Serial.print("Estimated scan time: ");
+      Serial.print(1.06*num_points);
+      Serial.println(" seconds");
       if(line == HORIZ) {
         TakeLine(horiz_start_angle, horiz_stop_angle, num_points, vert_start_angle, true);
       }
@@ -94,6 +100,9 @@ void loop() {
     //Cloud mode
     else if( mode_pick == 3 ) {
       obtainCloudParams();
+      Serial.print("Estimated scan time: ");
+      Serial.print(1.06*pow(num_points,2));
+      Serial.println(" seconds");
       TakePointCloud(horiz_start_angle, horiz_stop_angle, vert_start_angle, vert_stop_angle, num_points, num_points);
     }
     
@@ -117,7 +126,8 @@ void TakePoint(double x, double y) {
   vertical.write(y);
   
   delay(1000);
-  
+
+  digitalWrite(status_LED, HIGH);
   Serial.print("At (");
   Serial.print(horizontal.read());
   Serial.print(", ");
@@ -129,6 +139,7 @@ void TakePoint(double x, double y) {
   uint8_t inTentCity = intensity();
   Serial.println(inTentCity);
   delay(10);
+  digitalWrite(status_LED, LOW);
 }
 
 void TakeLine(double minNum, double maxNum, double numPoints, double otherAxis, bool isHorizontal) {
