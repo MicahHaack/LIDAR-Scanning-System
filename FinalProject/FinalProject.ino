@@ -274,9 +274,9 @@ void obtainCloudParams() {
   int mnp = mhnp * mvnp;
 
   while( num_points <= 0 ) {
-    Serial.println("Select number of points to record:");
+    Serial.println("Select number of points to record ( 1 to " + String(mnp) +  " ):");
     grabInput();
-    num_points = validAngle(inStr, 1, mnp);
+    num_points = validAngle(inStr, 1, sqrt(mnp));
   }
 
   String printStr = "Starting cloud scan starting at (" + String(horiz_start_angle) + ", " + String(vert_start_angle) + ") and ending at (" + String(horiz_stop_angle) + ", " + String(vert_stop_angle) + ") with " + String(num_points) + " data points";
@@ -332,7 +332,7 @@ void obtainLineParams() {
       vert_start_angle = validAngle(inStr, 30, 120);
     }
 
-    mnp = ( (horiz_stop_angle - horiz_stop_angle) / 5 ) + 1;
+    mnp = ( (horiz_stop_angle - horiz_start_angle) / 5 ) + 1;
     vert_stop_angle = vert_start_angle;
 
   }
@@ -358,7 +358,7 @@ void obtainLineParams() {
       horiz_start_angle = validAngle(inStr, 0, 180);
     }
 
-    mnp = ( (vert_stop_angle - vert_stop_angle) / 5 ) + 1;
+    mnp = ( (vert_stop_angle - vert_start_angle) / 5 ) + 1;
   
     horiz_stop_angle = horiz_start_angle;
 
@@ -367,7 +367,7 @@ void obtainLineParams() {
 
   // grab number of points
   while( num_points <= 0 ) {
-    Serial.println("Select number of points to record:");
+    Serial.println("Select number of points to record ( 1 to " + String(mnp) + " ):");
     grabInput();
     num_points = validAngle(inStr, 1, mnp);
   }
