@@ -8,11 +8,12 @@
 
 #include <ctype.h>
 #include <LIDARLite.h>
+#include <Wire.h>
 #include <Servo.h>
 
 #define MAX_POINT_COUNT 100
 
-enum op_mode{PIXEL, LINE, CLOUD}mode;
+//enum op_mode{PIXEL, LINE, CLOUD}mode;
 enum line_mode{HORIZ, VERT}line;
 
 String inStr = "";
@@ -24,6 +25,7 @@ int horiz_stop_angle = -1;
 int vert_start_angle = -1;  // adjust by some constant
 int vert_stop_angle = -1;
 int num_points = 0;
+int status_LED = PA5;
 
 LIDARLite lidarLite;
 Servo horizontal, vertical;
@@ -50,6 +52,7 @@ void setup() {
   Serial.println("Enter stop at any time to abort the scan process");
   
   grabInput();
+  pinMode(status_LED, OUTPUT);
 
 }
 
@@ -59,73 +62,60 @@ void loop() {
   grabInputNoWait();
 
   inStr.toLowerCase();
-  if( !runScan && !inStr.compareTo("start\r")) {  // check if user wants to begin scan
-    Serial.println("Starting scan...");
-    Serial.println("Select scan mode:");
-    Serial.println("1: pixel");
-    Serial.println("2: 2-D line scan");
-    Serial.println("3: 3-D point cloud");
-  
-    // select operating mode
-    grabInput();
-    int mode_pick = validAngle(inStr, 1, 3);
-
-    while(mode_pick <= 0) {
-
+  if(!inStr.compareTo("start\r")) {  // check if user wants to begin scan
+    int mode_pick;
+    do {
       Serial.println("Select scan mode:");
-      Serial.println("1: pixel");
+      Serial.println("1: Point");
       Serial.println("2: 2-D line scan");
       Serial.println("3: 3-D point cloud");
+      Serial.println("(4: Attempt LidarLite Reset)");
       grabInput();
-      mode_pick = validAngle(inStr, 1, 3);
-    
-    }
-
-    if( mode_pick == 1 ) {
-      mode = PIXEL;
-    } else if( mode_pick == 2 ) {
-      mode = LINE;
-    } else if( mode_pick == 3 ) {
-      mode = CLOUD;
-    }
-
-    // obtain operating params
-
-    if(mode == PIXEL)
-      obtainPixelParams();
-    if(mode == LINE)
-      obtainLineParams();
-    if(mode == CLOUD)
-      obtainCloudParams();
+      mode_pick = validAngle(inStr, 1, 4);
+    } while(mode_pick <= 0);
 
     runScan = true;
-      
+    
+    //Single point mode
+    if( mode_pick == 1 ) {
+      obtainPixelParams();      
+      Serial.println("Estimated scan time: 1.06 seconds");
+      TakePoint(horiz_start_angle, vert_start_angle);
     }
     
-
-
-  if( runScan ) {   // if we are running a scan complete next scan cycle
-  // interupt instead to allow for loops ?
-    delay(1000);
-
-    if( mode == PIXEL ) {
-      Serial.println("stepping pixel op");
-      TakePoint(horiz_start_angle, vert_start_angle);
-      runStop();
-    } else if( mode == LINE ) {
-      Serial.println("stepping line op");
+    //Line mode
+    else if( mode_pick == 2 ) {
+      obtainLineParams();
+      Serial.print("Estimated scan time: ");
+      Serial.print(1.06*num_points);
+      Serial.println(" seconds");
       if(line == HORIZ) {
         TakeLine(horiz_start_angle, horiz_stop_angle, num_points, vert_start_angle, true);
       }
       else {
         TakeLine(vert_start_angle, vert_stop_angle, num_points, horiz_start_angle, false);
       }
-      runStop();
-    } else if( mode == CLOUD ) {
-      Serial.println("stepping cloud op");
+    }
+    
+    //Cloud mode
+    else if( mode_pick == 3 ) {
+      obtainCloudParams();
+      Serial.print("Estimated scan time: ");
+      Serial.print(1.06*pow(num_points,2));
+      Serial.println(" seconds");
       TakePointCloud(horiz_start_angle, horiz_stop_angle, vert_start_angle, vert_stop_angle, num_points, num_points);
-      runStop();
-    } 
+    }
+    
+    //LidarLite Reset
+    else if( mode_pick == 4) {
+      Serial.println("Attempting reset...");
+      delay(100);
+      lidarLite.begin(0, true);
+      lidarLite.configure(0);
+      delay(100);
+    }
+
+    runStop();
   }
 }
 
@@ -136,7 +126,8 @@ void TakePoint(double x, double y) {
   vertical.write(y);
   
   delay(1000);
-  
+
+  digitalWrite(status_LED, HIGH);
   Serial.print("At (");
   Serial.print(horizontal.read());
   Serial.print(", ");
@@ -144,8 +135,11 @@ void TakePoint(double x, double y) {
   Serial.print("), the distance is ");
   int dist = lidarLite.distance();
   Serial.print(dist);
-  Serial.println(" cm");
+  Serial.print(" cm. Intensity: ");
+  uint8_t inTentCity = intensity();
+  Serial.println(inTentCity);
   delay(10);
+  digitalWrite(status_LED, LOW);
 }
 
 void TakeLine(double minNum, double maxNum, double numPoints, double otherAxis, bool isHorizontal) {
@@ -205,7 +199,7 @@ int validAngle(String str, int min_val, int max_val) {
 void grabInput() {
 
     // wait for user to begin inputing
-    while (Serial.available() <= 0) { delay(300); }
+    while (Serial.available() <= 0) { delay(100); }
   
     if( Serial.available() > 0 ) {  // read serial input
     inStr = Serial.readString();    
@@ -252,15 +246,15 @@ void obtainCloudParams() {
 
   // prompt for start / stop vert angles
   while( vert_start_angle == -1 ) {
-    Serial.println("Select Vertical Start Angle ( 0 to 90 ): ");
+    Serial.println("Select Vertical Start Angle ( 30 to 120 ): ");
     grabInput();
-    vert_start_angle = validAngle(inStr, 0, 90);
+    vert_start_angle = validAngle(inStr, 30, 120);
   }
 
   while( vert_stop_angle == -1 ) {
-    Serial.println("Select Vertical Stop Angle ( " + String(vert_start_angle) + " to 90 ):");
+    Serial.println("Select Vertical Stop Angle ( " + String(vert_start_angle) + " to 120 ):");
     grabInput();
-    vert_stop_angle = validAngle(inStr, vert_start_angle, 90);
+    vert_stop_angle = validAngle(inStr, vert_start_angle, 120);
   }
 
   // grab number of points
@@ -326,9 +320,9 @@ void obtainLineParams() {
     }
 
     while(vert_start_angle == -1) {
-      Serial.println("Select Vertical Angle ( 0 to 90 ):");
+      Serial.println("Select Vertical Angle ( 30 to 120 ):");
       grabInput();
-      vert_start_angle = validAngle(inStr, 0, 90);
+      vert_start_angle = validAngle(inStr, 30, 120);
     }
 
     mnp = ( (horiz_stop_angle - horiz_stop_angle) / 5 ) + 1;
@@ -340,15 +334,15 @@ void obtainLineParams() {
   if( line == VERT ) {
 
     while(vert_start_angle == -1) {
-      Serial.println("Select Vertical Start Angle ( 0 to 90 ): ");
+      Serial.println("Select Vertical Start Angle ( 30 to 120 ): ");
       grabInput();
-      vert_start_angle = validAngle(inStr, 0, 90);
+      vert_start_angle = validAngle(inStr, 30, 120);
     }
 
     while(vert_stop_angle == -1) {
-      Serial.println("Select Vertical Stop Angle ( " + String(vert_start_angle) +" to 90 ):");
+      Serial.println("Select Vertical Stop Angle ( " + String(vert_start_angle) +" to 120 ):");
       grabInput();
-      vert_stop_angle = validAngle(inStr, vert_start_angle, 180);
+      vert_stop_angle = validAngle(inStr, vert_start_angle, 120);
     }
 
     while(horiz_start_angle == -1) {
@@ -393,10 +387,10 @@ void obtainPixelParams() {
   }
 
   while(vert_start_angle == -1) {
-    Serial.println("Select Vertical Angle ( 0 to 90 ): ");
+    Serial.println("Select Vertical Angle ( 30 to 120 ): ");
     grabInput();
 
-    vert_start_angle = validAngle(inStr, 0, 90);
+    vert_start_angle = validAngle(inStr, 30, 120);
   }
 
   num_points = 1;
@@ -440,4 +434,41 @@ void establishContact() {
   }
   Serial.println("");
   Serial.println("CONNECTED");   // carriage return
+}
+
+uint8_t intensity()
+{
+byte isBusy = 1;
+uint8_t intensity;
+int loopCount;
+
+// Poll busy bit in status register until device is idle
+while(isBusy)
+{
+// Read status register
+Wire.beginTransmission(LIDARLITE_ADDR_DEFAULT);
+Wire.write(0x01);
+Wire.endTransmission();
+Wire.requestFrom(LIDARLITE_ADDR_DEFAULT, 1);
+isBusy = Wire.read();
+isBusy = bitRead(isBusy,0); // Take LSB of status register, busy bit
+
+loopCount++; // Increment loop counter
+// Stop status register polling if stuck in loop
+if(loopCount > 9999)
+{
+  break;
+}
+}
+
+// read register 0x0e which is signal strength
+Wire.beginTransmission(LIDARLITE_ADDR_DEFAULT);
+Wire.write(0x0e);
+Wire.endTransmission();
+Wire.requestFrom(LIDARLITE_ADDR_DEFAULT, 1);
+intensity = Wire.read();
+
+// Return the measured intensity
+
+return intensity;
 }
