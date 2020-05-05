@@ -66,25 +66,32 @@ void loop() {
     int mode_pick;
     do {
       Serial.println("Select scan mode:");
-      Serial.println("1: Point");
-      Serial.println("2: 2-D line scan");
-      Serial.println("3: 3-D point cloud");
-      Serial.println("(4: Attempt LidarLite Reset)");
+      Serial.println("1: 3-D point cloud (DEFAULT)");
+      Serial.println("2: Point (custom)");
+      Serial.println("3: 2-D line scan (custom)");
+      Serial.println("4: 3-D point cloud (custom)");
+      Serial.println("(5: Attempt LidarLite Reset)");
       grabInput();
-      mode_pick = validAngle(inStr, 1, 4);
+      mode_pick = validAngle(inStr, 1, 5);
     } while(mode_pick <= 0);
 
     runScan = true;
+
+    //Default point cloud
+    if( mode_pick == 1) {
+      Serial.println("Estimated scan time: 687 seconds");
+      TakePointCloud(0, 180, 30, 120, 36, 18);
+    }
     
     //Single point mode
-    if( mode_pick == 1 ) {
+    else if( mode_pick == 2 ) {
       obtainPixelParams();      
       Serial.println("Estimated scan time: 1.06 seconds");
       TakePoint(horiz_start_angle, vert_start_angle);
     }
     
     //Line mode
-    else if( mode_pick == 2 ) {
+    else if( mode_pick == 3 ) {
       obtainLineParams();
       Serial.print("Estimated scan time: ");
       Serial.print(1.06*num_points);
@@ -98,7 +105,7 @@ void loop() {
     }
     
     //Cloud mode
-    else if( mode_pick == 3 ) {
+    else if( mode_pick == 4 ) {
       obtainCloudParams();
       Serial.print("Estimated scan time: ");
       Serial.print(1.06*pow(num_points,2));
@@ -107,7 +114,7 @@ void loop() {
     }
     
     //LidarLite Reset
-    else if( mode_pick == 4) {
+    else if( mode_pick == 5) {
       Serial.println("Attempting reset...");
       delay(100);
       lidarLite.begin(0, true);
