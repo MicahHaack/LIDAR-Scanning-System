@@ -265,10 +265,17 @@ void obtainCloudParams() {
 
   // grab number of points
 
+  // find max horiz, vert
+  int mhnp = ( (horiz_stop_angle - horiz_start_angle) / 5 ) + 1;
+  int mvnp = ( (vert_stop_angle - vert_start_angle) / 5 ) + 1;
+
+  // max num points
+  int mnp = mhnp * mvnp;
+
   while( num_points <= 0 ) {
     Serial.println("Select number of points to record:");
     grabInput();
-    num_points = validAngle(inStr, 1, MAX_POINT_COUNT);
+    num_points = validAngle(inStr, 1, mnp);
   }
 
   String printStr = "Starting cloud scan starting at (" + String(horiz_start_angle) + ", " + String(vert_start_angle) + ") and ending at (" + String(horiz_stop_angle) + ", " + String(vert_stop_angle) + ") with " + String(num_points) + " data points";
@@ -301,6 +308,8 @@ void obtainLineParams() {
 
   String dir = "horizontal";
 
+  int mnp = 0; // max num points to keep angle change >= 5 deg
+
   // prompt for start / stop horizontal angles, and fixed vert angle
   if( line == HORIZ ) {
 
@@ -322,6 +331,7 @@ void obtainLineParams() {
       vert_start_angle = validAngle(inStr, 0, 90);
     }
 
+    mnp = ( (horiz_stop_angle - horiz_stop_angle) / 5 ) + 1;
     vert_stop_angle = vert_start_angle;
 
   }
@@ -347,17 +357,18 @@ void obtainLineParams() {
       horiz_start_angle = validAngle(inStr, 0, 180);
     }
 
+    mnp = ( (vert_stop_angle - vert_stop_angle) / 5 ) + 1;
+  
     horiz_stop_angle = horiz_start_angle;
 
     dir = "vertical";
   }
 
   // grab number of points
-
   while( num_points <= 0 ) {
     Serial.println("Select number of points to record:");
     grabInput();
-    num_points = validAngle(inStr, 1, MAX_POINT_COUNT);
+    num_points = validAngle(inStr, 1, mnp);
   }
   
   String printStr = "Starting " + dir + " line scan starting at (" + String(horiz_start_angle) + ", " + String(vert_start_angle) + ") and ending at (" + String(horiz_stop_angle) + ", " + String(vert_stop_angle) + ") with " + String(num_points) + " data points";
