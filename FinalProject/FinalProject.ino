@@ -276,8 +276,10 @@ void obtainCloudParams() {
   while( num_points <= 0 ) {
     Serial.println("Select number of points to record ( 1 to " + String(mnp) +  " ):");
     grabInput();
-    num_points = validAngle(inStr, 1, sqrt(mnp));
+    num_points = validAngle(inStr, 1, mnp);
   }
+
+  num_points = sqrt(mnp);
 
   String printStr = "Starting cloud scan starting at (" + String(horiz_start_angle) + ", " + String(vert_start_angle) + ") and ending at (" + String(horiz_stop_angle) + ", " + String(vert_stop_angle) + ") with " + String(num_points) + " data points";
   Serial.println(printStr);
