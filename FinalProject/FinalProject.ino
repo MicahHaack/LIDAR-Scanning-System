@@ -466,7 +466,7 @@ loopCount++; // Increment loop counter
 // Stop status register polling if stuck in loop
 if(loopCount > 9999)
 {
-  break;
+  return -1;
 }
 }
 
